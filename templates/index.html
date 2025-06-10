@@ -12,6 +12,9 @@
     <button type="submit">Upload</button>
   </form>
   <p>{{id}}</p>
+  <p>Drive Space Used: {{ space.used }}</p>
+<p>Total Drive Space: {{ space.total }}</p>
+<p>Free Space: {{ space.free }}</p>
 
   <h3>Uploaded Files:</h3>
   <ul>
@@ -23,6 +26,6 @@
   </ul>
 
   <br>
-  <a href="/logout">Logout</a>
+  <a href="{{ url_for('home') }}">Logout</a>
 </body>
 </html>
