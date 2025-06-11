@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file,session
 import os
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,6 +8,8 @@ from google.auth.transport.requests import Request
 from flask_pymongo import PyMongo
 import urllib.parse
 from io import BytesIO
+
+
 
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -63,9 +65,10 @@ def home():
 def login():
     global userid,userpass
     
-    userid=request.form['id']
-    userpass=request.form['pass']
-    name = collection.find_one({'id': userid,'pass': userpass})
+    session['userid'] = request.form['id']
+    session['userpass'] = request.form['pass']
+
+    name = collection.find_one({'id': session.get('userid'),'pass': session.get('userpass')})
     if name :
         return redirect(url_for('dashboard'))
 
@@ -78,13 +81,14 @@ def registor():
     if request.method=="POST":
         global userid,userpass
         
-        userid=request.form['id']
-        userpass=request.form['pass']
+        session['userid'] = request.form['id']
+        session['userpass'] = request.form['pass']
+
         repass=request.form['repass']
-        if userpass==repass:
-            name = collection.find_one({'id': userid})
+        if session.get('userpass')==repass:
+            name = collection.find_one({'id': session.get('userid')})
             if name == None:
-                    collection.insert_one({"id": userid,"pass": userpass,"data": []})
+                    collection.insert_one({"id": userid,"pass": session.get('userpass'),"data": []})
                     return redirect(url_for('dashboard'))
             else:
                 return render_template('error.html')
@@ -152,20 +156,20 @@ def get_drive_space_num(gmail):
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     
-    new_data = collection.find_one({"id": userid,"pass":userpass})
+    new_data = collection.find_one({"id": session.get('userid'),"pass":session.get('userpass')})
     
     if len(new_data['data'])==0:
         mails=gmailsdb.find_one({'space':{'$lt':14.8*1024*1024*1024}})
-        mails['users'].append(userid)
+        mails['users'].append(session.get('userid'))
         new_data['data'].append({'gmail':mails['id'],"fileids":[]})
         service = get_drive_service(mails['id'])
         gmailsdb.update_one({'id':mails['id'] }, {'$set': mails})
-        collection.update_one({'id':userid }, {'$set': new_data})
+        collection.update_one({'id':session.get('userid') }, {'$set': new_data})
 
     if request.method == 'POST':
         file = request.files['file'] 
         if file:
-            new_data = collection.find_one({"id": userid,"pass":userpass})
+            new_data = collection.find_one({"id": session.get('userid'),"pass":session.get('userpass')})
             count=0
             for i in new_data['data']:
                 space_check = get_drive_space_num(i['gmail'])
@@ -181,20 +185,20 @@ def dashboard():
             media = MediaFileUpload(path, resumable=True)
             request_drive = service.files().create(body={'name': file.filename}, media_body=media)
             print(service.files().create(body={'name': file.filename}, media_body=media, fields='id').execute().get('id'))
-            new_data = collection.find_one({"id": userid,"pass":userpass})
+            new_data = collection.find_one({"id": session.get('userid'),"pass":session.get('userpass')})
 
             new_data['data'][count]['fileids'].append(service.files().create(body={'name': file.filename}, media_body=media, fields='id').execute().get('id'))
-            result = collection.update_one({'id': userid}, {'$set': new_data})
+            result = collection.update_one({'id': session.get('userid')}, {'$set': new_data})
             new_data = gmailsdb.find_one({"id": gmail})
             if new_data == None:
                 gmailsdb.insert_one({'id':gmail,'fileids':[],'space':'','users':[]})
                 new_data = gmailsdb.find_one({"id": gmail})
             new_data['fileids'].append(service.files().create(body={'name': file.filename}, media_body=media, fields='id').execute().get('id'))
-            if userid in new_data['users']:
+            if session.get('userid') in new_data['users']:
                 print("")
 
             else:
-                new_data['users'].append(userid)
+                new_data['users'].append(session.get('userid'))
 
             gmailsdb.update_one({'id':gmail }, {'$set': new_data})
 
@@ -217,7 +221,7 @@ def dashboard():
             return redirect(url_for('dashboard'))
 
     files=[]
-    data=collection.find_one({"id": userid,"pass":userpass})
+    data=collection.find_one({"id": session.get('userid'),"pass":session.get('userpass')})
     data2=data['data']
     for j in data2:
         service = get_drive_service(j['gmail'])
@@ -227,11 +231,11 @@ def dashboard():
     # results = service.files().list(pageSize=10, fields="files(id, name)").execute()
     # files = results.get('files', [])
     space_info = get_drive_space('harrydie9831@gmail.com')
-    return render_template('index.html', files=files,id=userid,space=space_info)
+    return render_template('index.html', files=files,id=session.get('userid'),space=space_info)
 @app.route('/download/<file_id>')
 def download_file(file_id):
     service = get_drive_service('harrydie9831@gmail.com')
-    data=collection.find_one({"id": userid,"pass":userpass})
+    data=collection.find_one({"id": session.get('userid'),"pass":session.get('userpass')})
     data2=data['data']
     for j in data2:
         service = get_drive_service(j['gmail'])
@@ -254,7 +258,7 @@ def download_file(file_id):
     return send_file(fh, as_attachment=True, download_name=f"{filename2}")
 @app.route('/delete/<file_id>')
 def delete_file(file_id):
-    data=collection.find_one({"id": userid,"pass":userpass})
+    data=collection.find_one({"id": session.get('userid'),"pass":session.get('userpass')})
     data2=data['data']
     for j in data2:
         service = get_drive_service(j['gmail'])
@@ -263,7 +267,7 @@ def delete_file(file_id):
                 service.files().delete(fileId=file_id).execute()
                 #collection.update_one({"data": {"$elemMatch": {"fileids": "1KV3MQFULuiKuZxkmjbowkQ9pjotRQKEA"}}},{'$pull': {"data": {"$elemMatch": {"fileids": "1KV3MQFULuiKuZxkmjbowkQ9pjotRQKEA"}}}})
                 
-                collection.update_one({'id': userid, 'pass': userpass, 'data.gmail': j['gmail']},{'$pull': {'data.$.fileids': i}})
+                collection.update_one({'id': session.get('userid'), 'pass': session.get('userpass'), 'data.gmail': j['gmail']},{'$pull': {'data.$.fileids': i}})
                 data = gmailsdb.find_one({'id':j['gmail']})
                 space=get_drive_space_num(j['gmail'])
                 data['space']= space['used']
