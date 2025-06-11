@@ -88,7 +88,7 @@ def registor():
         if session.get('userpass')==repass:
             name = collection.find_one({'id': session.get('userid')})
             if name == None:
-                    collection.insert_one({"id": userid,"pass": session.get('userpass'),"data": []})
+                    collection.insert_one({"id": session.get('userid'),"pass": session.get('userpass'),"data": []})
                     return redirect(url_for('dashboard'))
             else:
                 return render_template('error.html')
