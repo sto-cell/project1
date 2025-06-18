@@ -3,16 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" media="screen and (min-width: 480px)" href="{{ url_for('static', filename='login.css') }}">
+  <link rel="stylesheet" media="screen and (max-width: 480px)" href="{{ url_for('static', filename='loginph.css') }}">
     <title>Registration</title>
 </head>
 <body>
+  <div id="content">
+    <div id="greet">
+    <span>Welcome</span>
+    <span>Back</span>
+    <p>MongoDB Atlas integrates operational and vector databases in a single, unified platform. Use vector representations of your data to perform semantic search</p>
+  </div>
+  <div id="logincard">
     <h2>Registration</h2>
-  <form action="{{ url_for('registor') }}" method="post">
-    <input type="text" name="id" placeholder="Username" required><br><br>
-    <input type="password" name="pass" placeholder="create Password" required><br><br>
-    <input type="password" name="repass" placeholder="Recreate Password" required><br><br>
-    <button type="submit">registor</button>
+    <form action="{{ url_for('registor') }}" method="post">
+    <label for="id">Username</label>
+    <input type="text" name="id"  required><br>
+    <label for="id">create Password</label>
+    <input type="password" name="pass"  required><br>
+    <label for="id">Recreate Password</label>
+    <input type="password" name="repass"  required><br><br>
+    <button type="submit">Register Now</button>
   </form>
-  <a href="{{ url_for('home') }}">have an account</a>
+  <a href="{{ url_for('home') }}">Already have an account? login now</a>
+  </div></div>
+  
+  {% if error %}
+    <p style="color:red;">{{ error }}</p>
+  {% endif %}
+    
 </body>
 </html>
